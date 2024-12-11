@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>계산기</title>
+        <style>
+            /* 기존 스타일 코드 유지 */
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f0f0;
+                color: #333;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                transition: background-color 0.3s, color 0.3s;
+            }
+            .dark-mode {
+                background-color: #333;
+                color: #000000;
+            }
+            .calculator {
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                background-color: #fff;
+            }
+            input[type="text"] {
+                width: 85%;
+                padding: 10px;
+                margin-bottom: 10px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 24px; /* 입력창 글자 크기 */
+            }
+            button {
+                padding: 10px; /* 기본 버튼 패딩 유지 */
+                margin: 5px;
+                border: none;
+                border-radius: 5px;
+                background-color: #007BFF;
+                color: white;
+                cursor: pointer;
+                font-size: 20px; /* 버튼 글자 크기 */
+            }
+            button.large {
+                padding: 20px; /* 숫자 버튼 패딩 증가 */
+                width: 60px; /* 숫자 버튼 너비 */
+                height: 60px; /* 숫자 버튼 높이 */
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+            .dark-mode button {
+                background-color: #555;
+            }
+            .dark-mode button:hover {
+                background-color: #777;
+            }
+            .popup {
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: white;
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                max-height: 400px; /* 최대 높이 설정 */
+                overflow-y: auto; /* 세로 스크롤 가능 */
+            }
+            .popup-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="calculator" id="calculator">
+            <h2>계산기</h2>
+            <input type="text" id="result" disabled>
+            <div>
+                <button class="large" onclick="appendToResult('1')">1</button>
+                <button class="large" onclick="appendToResult('2')">2</button>
+                <button class="large" onclick="appendToResult('3')">3</button>
+                <button class="large" onclick="appendToResult('+')">+</button>
+            </div>
+            <div>
+                <button class="large" onclick="appendToResult('4')">4</button>
+                <button class="large" onclick="appendToResult('5')">5</button>
+                <button class="large" onclick="appendToResult('6')">6</button>
+                <button class="large" onclick="appendToResult('-')">-</button>
+            </div>
+            <div>
+                <button class="large" onclick="appendToResult('7')">7</button>
+                <button class="large" onclick="appendToResult('8')">8</button>
+                <button class="large" onclick="appendToResult('9')">9</button>
+                <button class="large" onclick="appendToResult('*')">*</button>
+            </div>
+            <div>
+                <button class="large" onclick="calculate()">=</button>
+                <button class="large" onclick="clearResult()">C</button>
+                <button class="large" onclick="appendToResult('0')">0</button>
+                <button class="large" onclick="appendToResult('/')">/</button>
+            </div>
+            <button id="darkModeButton" onclick="toggleDarkMode()">다크 모드</button>
+            <button onclick="fetchRecords()">기록</button>
+        </div>
+
+        <div class="popup-overlay" id="popupOverlay" onclick="closePopup()"></div>
+        <div class="popup" id="popup">
+            <h3>저장된 기록</h3>
+            <div id="records"></div>
+            <button onclick="closePopup()">닫기</button>
+        </div>
+
+        <script>
+            function appendToResult(value) {
+                document.getElementById('result').value += value;
+            }
+
+            function clearResult() {
+                document.getElementById('result').value = '';
+            }
+
+            function calculate() {
+                const expression = document.getElementById('result').value;
+                const result = eval(expression);
+                document.getElementById('result').value = result;
+                saveToDatabase(expression, result);
+            }
+
+            function toggleDarkMode() {
+                const body = document.body;
+                const button = document.getElementById('darkModeButton');
+                body.classList.toggle('dark-mode');
+                if (body.classList.contains('dark-mode')) {
+                    button.textContent = '화이트 모드';
+                } else {
+                    button.textContent = '다크 모드';
+                }
+            }
+
+            function saveToDatabase(expression, result) {
+                fetch('/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ expression: expression, result: result })
+                });
+            }
+
+            function fetchRecords() {
+                fetch('/records')
+                    .then(response => response.json())
+                    .then(data => {
+                        const recordsDiv = document.getElementById('records');
+                        recordsDiv.innerHTML = ''; // Clear previous records
+                        data.forEach(record => {
+                            recordsDiv.innerHTML += `<p>${record[0]} = ${record[1]}</p>`;
+                        });
+                        openPopup();
+                    });
+            }
+
+            function openPopup() {
+                document.getElementById('popup').style.display = 'block';
+                document.getElementById('popupOverlay').style.display = 'block';
+            }
+
+            function closePopup() {
+                document.getElementById('popup').style.display = 'none';
+                document.getElementById('popupOverlay').style.display = 'none';
+            }
+        </script>
+    </body>
+</html>
